@@ -92,34 +92,32 @@ def send_email(send_to, send_from, subject, text, attachment):
     username = os.environ.get("smtp_username")
     pw = os.environ.get("smtp_password")
     attachment_name = os.path.basename(attachment)
+    recipients = [address.strip() for address in send_to.split(",")]
 
     try:
         server = smtplib.SMTP(smtp_server, port)
         server.ehlo()
         server.login(username, pw)
 
-        msg = MIMEMultipart()
-        msg['From'] = send_from
-        msg['To'] = send_to.replace(" ", "")
-        print(msg['To'])
-        msg['Subject'] = subject
+        for r in recipients:
+            msg = MIMEMultipart()
+            msg['From'] = send_from
+            msg['To'] = r
+            msg['Subject'] = subject
 
-        msg.attach(MIMEText(text))
+            msg.attach(MIMEText(text))
 
-        part = MIMEBase('application', "octet-stream")
-        part.set_payload(open(attachment, "rb").read())
-        encoders.encode_base64(part)
-        part.add_header('Content-Disposition', f'attachment; filename="{attachment_name}"')
-        msg.attach(part)
-
-        server.sendmail(send_from, send_to, msg.as_string())
+            part = MIMEBase('application', "octet-stream")
+            part.set_payload(open(attachment, "rb").read())
+            encoders.encode_base64(part)
+            part.add_header('Content-Disposition', f'attachment; filename="{attachment_name}"')
+            msg.attach(part)
+            server.sendmail(send_from, msg['To'], msg.as_string())
         server.close()
 
-        return True
 
     except Exception as e:
         print("Failed to send email:", e)
-        return False
 
 
 

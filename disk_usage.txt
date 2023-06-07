@@ -1,0 +1,14 @@
+partition(device='/dev/root', mountpoint='/', fstype='ext4')
+    Total: 145.19 GB
+    Used: 37.80 GB
+    Free: 107.38 GB
+    Percent Used: 26.00%
+    Percent Free: 74.00%
+
+partition(device='10.144.228.2:/filmla', mountpoint='/nfs', fstype='nfs')
+    Total: 1510.82 GB
+    Used: 855.78 GB
+    Free: 583.35 GB
+    Percent Used: 56.60%
+    Percent Free: 43.40%
+

@@ -83,8 +83,8 @@ def generate_usage_file(device=None, mountpoint=None, all_partitions=False, file
 
 
 def send_email(send_to, send_from, subject, text, attachment):
-    smtp_server = 'smtp.postmarkapp.com'
-    port = 587
+    smtp_server = os.environ.get("smtp_server")
+    port = os.environ.get("smtp_port")
     username = os.environ.get("smtp_username")
     pw = os.environ.get("smtp_password")
     attachment_name = os.path.basename(attachment)

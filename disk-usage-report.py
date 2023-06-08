@@ -13,6 +13,9 @@ import configparser
 def import_config_values():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     config_file = os.path.join(script_dir, "config.ini")
+
+    assert os.path.exists(config_file), "Config file not found. Please make a copy of config.example.ini and name it config.ini, then update the values appropriately."
+
     config = configparser.ConfigParser()
     config.read(config_file)
 
@@ -117,7 +120,7 @@ if __name__ == '__main__':
     disk_ntuple = namedtuple('partition', 'device mountpoint fstype')
     usage_ntuple = namedtuple('usage', 'total used free percent')
 
-    file_path = generate_usage_file(all_partitions=True)
+    file_path = generate_usage_file(all_partitions=True, mountpoint='/,/nfs')
 
     send_to = os.environ.get("email_send_to")
     send_from = os.environ.get("email_send_from")

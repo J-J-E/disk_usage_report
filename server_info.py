@@ -41,6 +41,9 @@ def import_config_values():
         for key, value in config.items(section):
             os.environ[key] = value
 
+    email_config_check()
+
+
 
 def disk_partitions(all=False):
     """Return all mounted partitions as a namedtuple.
@@ -220,16 +223,21 @@ def get_network_statistics():
 def get_gpu_information():
     gpus = GPUtil.getGPUs()
     gpu_info = "GPU INFORMATION\n"
-    for idx, gpu in enumerate(gpus):
-        gpu_info += f"    GPU {idx + 1}:\n"
-        gpu_info += f"        Name: {gpu.name}\n"
-        gpu_info += f"        UUID: {gpu.uuid}\n"
-        gpu_info += f"        Load: {gpu.load * 100:.2f}%\n"
-        gpu_info += f"        Memory Usage:\n"
-        gpu_info += f"            Total: {gpu.memoryTotal/1024:.2f} GB\n"
-        gpu_info += f"            Used: {gpu.memoryUsed/1024:.2f} GB\n"
-        gpu_info += f"            Free: {gpu.memoryFree/1024:.2f} GB\n"
-        gpu_info += f"        Temperature: {gpu.temperature:.2f} °C\n\n"  # GPU temperature if available
+
+    if not gpus:
+        gpu_info += "    No GPUs found\n\n"
+    else:
+        for idx, gpu in enumerate(gpus):
+            gpu_info += f"    GPU {idx + 1}:\n"
+            gpu_info += f"        Name: {gpu.name}\n"
+            gpu_info += f"        UUID: {gpu.uuid}\n"
+            gpu_info += f"        Load: {gpu.load * 100:.2f}%\n"
+            gpu_info += f"        Memory Usage:\n"
+            gpu_info += f"            Total: {gpu.memoryTotal / 1024:.2f} GB\n"
+            gpu_info += f"            Used: {gpu.memoryUsed / 1024:.2f} GB\n"
+            gpu_info += f"            Free: {gpu.memoryFree / 1024:.2f} GB\n"
+            gpu_info += f"        Temperature: {gpu.temperature:.2f} °C\n\n"  # GPU temperature if available
+
     return gpu_info
 
 
@@ -305,13 +313,9 @@ def main():
     parser.add_argument("--metrics", help="Sections to include in the report (comma-separated)", default=None)
 
     args = parser.parse_args()
-    import_config_values()
-
     # Check Conflicting Arguments
     if args.mount_point and args.include_all_partitions:
         raise AssertionError("Conflicting parameters: --mount_point and --include_all_partitions cannot be used together.")
-    if args.send_email:
-        email_config_check()
 
     mount_points = None
     if args.mount_point:
@@ -322,6 +326,7 @@ def main():
     file_path = generate_usage_file(mountpoint=mount_points, include_all_partitions=args.include_all_partitions, metrics=args.metrics)
 
     if args.send_email:
+        import_config_values()
         hostname = socket.gethostname()
         send_to = os.environ.get("email_send_to")
         send_from = os.environ.get("email_send_from")

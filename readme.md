@@ -27,16 +27,18 @@ pip install -r requirements.txt
 
 ## Usage
 
-To generate the disk usage report and send it via email, execute the script using the following command:
+Example commands below
 ```
-python3 disk-usage-report.py #This will run across all disk/partitions found
+#This will run across all disk/partitions found
+python3 disk-usage-report.py 
 
-python3 disk-usage-report.py --mount_point "C:\\, D:\\" #specify mountpoint (windows)
+#specify mountpoint (windows)
+python3 disk-usage-report.py --mount_point "C:\\, D:\\" 
 
-python3 disk-usage-report.py --mount_point "/, /nfs" #specify mountpoint (linux)
+#specify mountpoint (linux)
+python3 disk-usage-report.py --mount_point "/, /nfs" 
 
 #Sending emails (after SMTP server configured)
-
 python3 disk-usage-report.py --send_email True #default value is false
 
 ```

@@ -13,7 +13,6 @@ import configparser
 def import_config_values():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     config_file = os.path.join(script_dir, "config.ini")
-
     config = configparser.ConfigParser()
     config.read(config_file)
 
@@ -83,7 +82,7 @@ def send_email(send_to, send_from, subject, text, attachment):
     username = os.environ.get("smtp_username")
     pw = os.environ.get("smtp_password")
     attachment_name = os.path.basename(attachment)
-    recipients = [address.strip() for address in send_to.split(",")]
+    recipients = send_to.split(",")
 
     try:
         server = smtplib.SMTP(smtp_server, port)
@@ -93,7 +92,8 @@ def send_email(send_to, send_from, subject, text, attachment):
         for r in recipients:
             msg = MIMEMultipart()
             msg['From'] = send_from
-            msg['To'] = r
+            msg['To'] = r.strip()
+
             msg['Subject'] = subject
 
             msg.attach(MIMEText(text))
@@ -117,7 +117,7 @@ if __name__ == '__main__':
     disk_ntuple = namedtuple('partition', 'device mountpoint fstype')
     usage_ntuple = namedtuple('usage', 'total used free percent')
 
-    file_path = generate_usage_file(mountpoint=['/', '/nfs'], all_partitions=True)
+    file_path = generate_usage_file(all_partitions=True)
 
     send_to = os.environ.get("email_send_to")
     send_from = os.environ.get("email_send_from")

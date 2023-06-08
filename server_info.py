@@ -4,6 +4,7 @@ import datetime
 import GPUtil
 import os
 import socket
+import subprocess
 import smtplib
 import platform
 import psutil
@@ -220,6 +221,80 @@ def get_network_statistics():
     return host_info + network_info
 
 
+def win_firewall(info):
+    try:
+        # Check firewall status using netsh command
+        firewall_status = subprocess.check_output("netsh advfirewall show allprofiles", shell=True,
+                                                  universal_newlines=True)
+        info += f"    Firewall Status:\n{indent_firewall_status_win(firewall_status)}"
+
+        # Check firewall rules using netsh command
+        firewall_rules = subprocess.check_output("netsh advfirewall firewall show rule name=all", shell=True,
+                                                 universal_newlines=True)
+        info += f"\n    Firewall Rules:\n{indent_firewall_rules_win(firewall_rules)}"
+
+    except subprocess.CalledProcessError as e:
+        info += "    Error retrieving firewall information:\n"
+        info += "        " + str(e) + "\n"
+
+    return info
+
+def lin_firewall(info):
+    try:
+        # Check firewall status using firewall-cmd command
+        firewall_status = subprocess.check_output("firewall-cmd --state", shell=True, universal_newlines=True)
+        info += f"    Firewall Status:        {firewall_status.strip()}\n"
+
+        # Check firewall rules using firewall-cmd command
+        firewall_rules = subprocess.check_output("firewall-cmd --list-all", shell=True, universal_newlines=True)
+        info += f"\n    Firewall Rules:\n{firewall_rules}"
+
+    except subprocess.CalledProcessError as e:
+        info += "    Error retrieving firewall information:\n"
+        info += "        " + str(e) + "\n"
+
+    return info
+
+def get_firewall_information():
+    if platform.system() == "Linux":
+        pass
+        firewall_info = lin_firewall("LINUX FIREWALL INFORMATION\n")
+    elif platform.system() == "Windows":
+        firewall_info = win_firewall("WINDOWS FIREWALL INFORMATION\n")
+    else:
+        firewall_info = "FIREWALL INFORMATION\n    Firewall information not available on this platform.\n"
+
+    return firewall_info
+
+def indent_firewall_status_win(status):
+    indented_status = ""
+    sections = status.split("\n\n\n")
+    for s in sections:
+        lines = (s.strip()).split("\n")
+        for index, line in enumerate(lines):
+            if index == 0 or index == 1:
+                indented_status += " " * 8 + line.strip() + "\n"
+            else:
+                indented_status += " " * 10 + line.strip() + "\n"
+        indented_status += "\n"
+
+    return indented_status
+
+def indent_firewall_rules_win(rules):
+    indented_rules = ""
+    sections = rules.split("\n\n")
+    for s in sections:
+        lines = (s.strip()).split("\n")
+        for index, line in enumerate(lines):
+            if index == 0 or index == 1:
+                indented_rules += " " * 8 + line.strip() + "\n"
+            else:
+                indented_rules += " " * 10 + line.strip() + "\n"
+        indented_rules += "\n"
+    indented_rules += "\n"
+    return indented_rules
+
+
 def get_gpu_information():
     gpus = GPUtil.getGPUs()
     gpu_info = "GPU INFORMATION\n"
@@ -248,7 +323,7 @@ def generate_usage_file(device=None, mountpoint=None, include_all_partitions=Fal
         file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "server_info.txt")
 
     if metrics is None:
-        metrics = 'os,cpu,sec,mem,dsk,net,gpu'
+        metrics = 'os,cpu,sec,mem,dsk,net,gpu,fw'
     else:
         metrics = metrics.lower()
 
@@ -258,6 +333,8 @@ def generate_usage_file(device=None, mountpoint=None, include_all_partitions=Fal
         file_contents += get_cpu_statistics()
     if 'sec' in metrics:
         file_contents += get_system_security(metrics)
+    if 'fw' in metrics:
+        file_contents += get_firewall_information()
     if 'mem' in metrics:
         file_contents += get_memory_statistics()
     if 'dsk' in metrics:

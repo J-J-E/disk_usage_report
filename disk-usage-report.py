@@ -131,15 +131,20 @@ def generate_usage_file(device=None, mountpoint=None, all_partitions=False, file
     memory_usage_info += f"        Free: {swap.free / 1024 / 1024 / 1024:.2f} GB\n\n"
     file_contents += memory_usage_info
 
-    #Disk Statistics
+    # Disk Statistics
     disk_usage_info = "DISK STATISTICS\n"
     partitions = disk_partitions(all=all_partitions)
+    if mountpoint is None:  # No mount points specified, report all of them
+        mount_points = [part.mountpoint for part in partitions]
+    else:
+        mount_points = mountpoint
+
     for part in partitions:
         if device and part.device not in device:
             continue
         if mountpoint and not any(
                 os.path.normcase(os.path.normpath(mp)) == os.path.normcase(os.path.normpath(part.mountpoint)) for mp in
-                mountpoint):
+                mount_points):
             continue
 
         disk_usage_info += " " + str(part) + "\n"
@@ -253,9 +258,8 @@ if __name__ == '__main__':
     mount_points = None
     if args.mount_point:
         mount_points = args.mount_point.split(',')
-
-    # Strip whitespace and remove the enclosing quotes
-    mount_points = [mp.strip().strip("'").strip('"') for mp in mount_points]
+        # Strip whitespace and remove the enclosing quotes
+        mount_points = [mp.strip().strip("'").strip('"') for mp in mount_points]
 
     file_path = generate_usage_file(mountpoint=mount_points, all_partitions=True)
 

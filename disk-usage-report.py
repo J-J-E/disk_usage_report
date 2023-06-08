@@ -1,9 +1,14 @@
-import configparser, os, socket, smtplib
-from collections import namedtuple
+import os
+import socket
+import smtplib
+import psutil
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
+from collections import namedtuple
+import configparser
+
 
 def import_config_values():
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -21,45 +26,31 @@ def disk_partitions(all=False):
     """Return all mounted partitions as a namedtuple.
     If all == False return physical partitions only.
     """
-    phydevs = []
-    with open("/proc/filesystems", "r") as f:
-        for line in f:
-            if not line.startswith("nodev"):
-                phydevs.append(line.strip())
-
+    partitions = psutil.disk_partitions(all=all)
     retlist = []
-    with open('/etc/mtab', "r") as f:
-        for line in f:
-            if not all and line.startswith('none'):
-                continue
-            fields = line.split()
-            device = fields[0]
-            mountpoint = fields[1]
-            fstype = fields[2]
-            if not all and fstype not in phydevs:
-                continue
-            if device == 'none':
-                device = ''
-            ntuple = disk_ntuple(device, mountpoint, fstype)
-            retlist.append(ntuple)
+    for part in partitions:
+        device = part.device
+        mountpoint = part.mountpoint
+        fstype = part.fstype
+        ntuple = disk_ntuple(device, mountpoint, fstype)
+        retlist.append(ntuple)
     return retlist
+
 
 def disk_usage(path):
     """Return disk usage associated with the path in gigabytes."""
-    st = os.statvfs(path)
-    block_size = st.f_frsize
-    total = (st.f_blocks * block_size) / (1024 ** 3)
-    used = ((st.f_blocks - st.f_bfree) * block_size) / (1024 ** 3)
-    free = (st.f_bavail * block_size) / (1024 ** 3)
-    try:
-        percent = (used / total) * 100
-    except ZeroDivisionError:
-        percent = 0
+    usage = psutil.disk_usage(path)
+    total = usage.total / (1024 ** 3)
+    used = usage.used / (1024 ** 3)
+    free = usage.free / (1024 ** 3)
+    percent = usage.percent
     return usage_ntuple(total, used, free, round(percent, 1))
+
 
 def write_disk_usage_info(file_path, contents):
     with open(file_path, "w") as f:
         f.write(contents)
+
 
 def generate_usage_file(device=None, mountpoint=None, all_partitions=False, file_path=None):
     """Generate a disk usage file for the specified device(s) or mountpoint(s)."""
@@ -115,10 +106,8 @@ def send_email(send_to, send_from, subject, text, attachment):
             server.sendmail(send_from, msg['To'], msg.as_string())
         server.close()
 
-
     except Exception as e:
         print("Failed to send email:", e)
-
 
 
 if __name__ == '__main__':
@@ -128,12 +117,11 @@ if __name__ == '__main__':
     disk_ntuple = namedtuple('partition', 'device mountpoint fstype')
     usage_ntuple = namedtuple('usage', 'total used free percent')
 
-    file_path = generate_usage_file(mountpoint='/,/nfs', all_partitions=True)
+    file_path = generate_usage_file(mountpoint=['/', '/nfs'], all_partitions=True)
 
     send_to = os.environ.get("email_send_to")
     send_from = os.environ.get("email_send_from")
-    subject=hostname + ' - Disk Usage Report'
-    text='Please see the attached file.'
-    attachment=file_path
+    subject = hostname + ' - Disk Usage Report'
+    text = 'Please see the attached file.'
+    attachment = file_path
     send_email(send_to, send_from, subject, text, attachment)
-

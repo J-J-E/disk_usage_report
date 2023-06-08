@@ -1,63 +1,57 @@
-# Disk Usage Script
-
-This script provides functionality to generate a disk usage report and send it via email. It calculates disk usage for specified partitions and generates a usage report that includes information about total space, used space, free space, and the percentage of disk space used.
-
-## Requirements
-
-- Python 3.x
-- Required Python packages (install using pip):
-    - `psutil` - for retrieving disk usage information
-    - `smtplib` - for sending email
-    - `email` - for constructing email messages
-    - `configparser` - for reading configuration files
-
-## Installation
-
-1. Clone the repository or download the script to your local machine.
-2. Install the required Python packages by running the following command:
-```
-pip install -r requirements.txt
-```
-
-
-## Configuration
-
-1. Rename the `config.example.ini` file to `config.ini`.
-2. Open the `config.ini` file and provide the necessary SMTP configuration details and email addresses for sending the disk usage report.
-
+# Server Information Report Script
+This script generates a server information report with various system statistics. It provides information about the operating system, CPU, memory, disk usage, network interfaces, and GPU. Additionally, it includes system security metrics such as connected user accounts and active network connections.
 ## Usage
-
-Example commands below
-
-
-### This will run across all disk/partitions found
+To generate a information report, run the script with the following command:
 ```
-python3 disk-usage-report.py 
+python server_info.py [--send_email] [--mount_point MOUNT_POINTS] [--include_all_partitions] [--metrics METRICS]
 ```
+### Optional Arguments
+- `--send_email`: Enables sending an email with the generated report. Requires SMTP server configuration in the environment variables.
+- `--mount_point MOUNT_POINTS`: Filters disk usage by specified mount points. Multiple mount points can be provided, separated by commas.
+- `--include_all_partitions`: Includes all partitions, including network and virtual partitions, in the disk usage report.
+- `--metrics METRICS`: Specifies the sections to include in the report. Multiple sections can be provided, separated by commas. Available sections: `os`, `cpu`, `sec`, `mem`, `dsk`, `net`, `gpu`.
 
-### specify mountpoint (windows)
+  - Sub metrics for the `sec` section:
+    - `cua`: Include connected user accounts.
+    - `anc`: Include active network connections.
+## Configuration
+Before using the script, make sure to set the following environment variables:
+- `smtp_server`: SMTP server for sending emails.
+- `smtp_port`: SMTP server port.
+- `smtp_username`: SMTP username for authentication.
+- `smtp_password`: SMTP password for authentication.
+- `email_send_to`: Email recipient(s).
+- `email_send_from`: Email sender.
+## Examples
+Generate a disk usage report including all sections:
 ```
-python3 disk-usage-report.py --mount_point "C:\\, D:\\" 
+python server_info.py
 ```
-
-### specify mountpoint (linux)
+Generate a disk usage report and send it via email:
 ```
-python3 disk-usage-report.py --mount_point "/, /nfs" 
+python server_info.py --send_email
 ```
-
-### Sending emails (after SMTP server configured)
+Filter disk usage by specific mount points:
 ```
-python3 disk-usage-report.py --send_email True #default value is false
+python server_info.py --mount_point "C:\\, D:\\" #windows
+python server_info.py --mount_point "/,/nfs" #linux
 ```
-
-
-## Customization
-
-- If you want to target specific partitions for disk usage calculation, update the `disk_partitions()` function in the script accordingly.
-
-## Security Considerations
-
-- Ensure that the SMTP credentials and sensitive information in the `config.ini` file are properly secured. Do not share this information in publicly accessible repositories or directories.
-- It is recommended to review and adjust the file permissions and access control for the script and associated files to maintain proper security.
-
-
+Include all partitions in the disk usage report - by default, only physical partitions are reported. Use this to enable virtual partiaitions and network drives
+```
+python server_info.py --include_all_partitions
+```
+Generate a disk usage report with specific metrics:
+```
+python server_info.py --metrics os,cpu,mem
+```
+Generate a disk usage report with the `sec` section and its sub metrics:
+```bash
+python server_info.py --metrics sec:cua:anc
+```
+Combining arguments:
+```bash
+python server_info.py --metrics os,dsk,sec:cua --include_all_partitions --send_email
+```
+Output from above command would be an email containing an attachment titled 
+## License
+This script is licensed under the MIT License. See the [LICENSE](LICENSE) file for more information.

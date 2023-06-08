@@ -135,17 +135,6 @@ def get_system_security(metrics=None):
     return security_info
 
 
-    if not metrics or 'anc' in sub_metrics:
-        connections = psutil.net_connections()
-        security_info += "    Active Network Connections:\n"
-        for conn in connections:
-            security_info += f"        Local Address: {conn.laddr}\n"
-            security_info += f"        Remote Address: {conn.raddr}\n"
-            security_info += f"        Status: {conn.status}\n\n"
-
-    return security_info
-
-
 def get_memory_statistics():
     memory = psutil.virtual_memory()
     total_memory = memory.total / (1024 * 1024 * 1024)  # Total physical memory in GB
@@ -248,7 +237,7 @@ def generate_usage_file(device=None, mountpoint=None, include_all_partitions=Fal
     """Generate a disk usage file for the specified device(s) or mountpoint(s)."""
     file_contents = ''
     if file_path is None:
-        file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "disk_usage.txt")
+        file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "server_info.txt")
 
     if metrics is None:
         metrics = 'os,cpu,sec,mem,dsk,net,gpu'

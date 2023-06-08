@@ -1,3 +1,5 @@
+import argparse
+import configparser
 import os
 import socket
 import smtplib
@@ -7,7 +9,6 @@ from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 from collections import namedtuple
-import configparser
 
 
 def import_config_values():
@@ -64,7 +65,9 @@ def generate_usage_file(device=None, mountpoint=None, all_partitions=False, file
     for part in partitions:
         if device and part.device not in device:
             continue
-        if mountpoint and part.mountpoint not in mountpoint:
+        if mountpoint and not any(
+                os.path.normcase(os.path.normpath(mp)) == os.path.normcase(os.path.normpath(part.mountpoint)) for mp in
+                mountpoint):
             continue
 
         disk_usage_info += str(part) + "\n"
@@ -114,17 +117,30 @@ def send_email(send_to, send_from, subject, text, attachment):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--send_email", help="Send email report if set to True", default=False, type=bool)
+    parser.add_argument("--mount_point", help='Filter disk usage by mount points (comma-separated, enclosed in quotes)', default=None)
+    args = parser.parse_args()
+
     import_config_values()
     hostname = socket.gethostname()
 
     disk_ntuple = namedtuple('partition', 'device mountpoint fstype')
     usage_ntuple = namedtuple('usage', 'total used free percent')
 
-    file_path = generate_usage_file(all_partitions=True, mountpoint='/,/nfs')
+    mount_points = None
+    if args.mount_point:
+        mount_points = args.mount_point.split(',')
 
-    send_to = os.environ.get("email_send_to")
-    send_from = os.environ.get("email_send_from")
-    subject = hostname + ' - Disk Usage Report'
-    text = 'Please see the attached file.'
-    attachment = file_path
-    send_email(send_to, send_from, subject, text, attachment)
+    # Strip whitespace and remove the enclosing quotes
+    mount_points = [mp.strip().strip("'").strip('"') for mp in mount_points]
+
+    file_path = generate_usage_file(mountpoint=mount_points, all_partitions=True)
+
+    if args.send_email:
+        send_to = os.environ.get("email_send_to")
+        send_from = os.environ.get("email_send_from")
+        subject = hostname + ' - Disk Usage Report'
+        text = 'Please see the attached file.'
+        attachment = file_path
+        send_email(send_to, send_from, subject, text, attachment)

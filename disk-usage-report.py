@@ -1,8 +1,11 @@
 import argparse
 import configparser
+import datetime
+import GPUtil
 import os
 import socket
 import smtplib
+import platform
 import psutil
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -57,10 +60,79 @@ def write_disk_usage_info(file_path, contents):
 
 def generate_usage_file(device=None, mountpoint=None, all_partitions=False, file_path=None):
     """Generate a disk usage file for the specified device(s) or mountpoint(s)."""
+    file_contents = ''
     if file_path is None:
         file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "disk_usage.txt")
 
-    disk_usage_info = ""
+    # Operating System information
+    uptime = psutil.boot_time()
+    uptime_dt = datetime.datetime.fromtimestamp(uptime)
+    uptime_str = str(datetime.datetime.now() - uptime_dt)
+    os_info = "OPERATING SYSTEM INFORMATION\n"
+    os_info += f"    System: {platform.system()}\n"
+    os_info += f"    Release: {platform.release()}\n"
+    os_info += f"    Version: {platform.version()}\n"
+    os_info += f"    Machine: {platform.machine()}\n"
+    os_info += f"    Processor: {platform.processor()}\n"
+    os_info += f"    Uptime: {uptime_str}\n\n"
+    file_contents += os_info
+
+    # CPU statistics
+    cpu_freq = psutil.cpu_freq()
+
+    cpu_percent = psutil.cpu_percent(interval=1)  # CPU usage as a percentage
+    logical_cpu_count = psutil.cpu_count(logical=True)  # Number of logical CPUs
+    physical_cpu_count = psutil.cpu_count(logical=False) # Number of physical CPUs
+    cpu_usage_info = "CPU STATISTICS\n"
+    cpu_usage_info += f"    Frequency: {cpu_freq.current:.2f} MHz\n"  # CPU frequency if available
+    cpu_usage_info += f"    CPU Usage (at runtime): {cpu_percent:.1f}%\n"
+    cpu_usage_info += f"    Number of CPUs (physical): {physical_cpu_count}\n"
+    cpu_usage_info += f"    Number of CPUs (logical): {logical_cpu_count}\n"
+    cpu_usage_info += f"    Number of Running Processes: {len(psutil.pids())}\n\n"
+    file_contents += cpu_usage_info
+
+    # System Security
+    security_info = "SYSTEM SECURITY\n"
+    users = psutil.users()
+    security_info += "    Connected User Accounts:\n"
+    for user in users:
+        security_info += f"        Username: {user.name}\n"
+        security_info += f"        Terminal: {user.terminal}\n"
+        security_info += f"        Hostname: {user.host}\n"
+        security_info += f"        Started: {user.started}\n\n"
+    connections = psutil.net_connections()
+    security_info += "    Active Network Connections:\n"
+    for conn in connections:
+        security_info += f"        Local Address: {conn.laddr}\n"
+        security_info += f"        Remote Address: {conn.raddr}\n"
+        security_info += f"        Status: {conn.status}\n\n"
+    file_contents += security_info
+
+    # Memory statistics
+    memory = psutil.virtual_memory()
+    total_memory = memory.total / (1024 * 1024 * 1024)  # Total physical memory in GB
+    available_memory = memory.available / (1024 * 1024 * 1024)  # Available memory in GB
+    used_memory = memory.used / (1024 * 1024 * 1024)  # Used memory in GB
+    free_memory = memory.free / (1024 * 1024 * 1024)  # Free memory in GB
+    cached_memory = (available_memory - free_memory)  # Cached memory estimate in GB
+    memory_percent = memory.percent  # Memory usage as a percentage
+    # Format memory statistics
+    memory_usage_info = "MEMORY STATISTICS\n"
+    memory_usage_info += f"    Total Memory: {total_memory:.2f} GB\n"
+    memory_usage_info += f"    Available Memory: {available_memory:.2f} GB\n"
+    memory_usage_info += f"    Used Memory: {used_memory:.2f} GB\n"
+    memory_usage_info += f"    Free Memory: {free_memory:.2f} GB\n"
+    memory_usage_info += f"    Cached Memory: {cached_memory:.2f} GB\n"
+    memory_usage_info += f"    Memory Usage: {memory_percent}%\n"
+    swap = psutil.swap_memory()
+    memory_usage_info += f"    Swap Space:\n"
+    memory_usage_info += f"        Total: {swap.total / 1024 / 1024 / 1024:.2f} GB\n"
+    memory_usage_info += f"        Used: {swap.used / 1024 / 1024 / 1024:.2f} GB\n"
+    memory_usage_info += f"        Free: {swap.free / 1024 / 1024 / 1024:.2f} GB\n\n"
+    file_contents += memory_usage_info
+
+    #Disk Statistics
+    disk_usage_info = "DISK STATISTICS\n"
     partitions = disk_partitions(all=all_partitions)
     for part in partitions:
         if device and part.device not in device:
@@ -70,14 +142,64 @@ def generate_usage_file(device=None, mountpoint=None, all_partitions=False, file
                 mountpoint):
             continue
 
-        disk_usage_info += str(part) + "\n"
+        disk_usage_info += " " + str(part) + "\n"
         usage = disk_usage(part.mountpoint)
         disk_usage_info += f"    Total: {usage.total:.2f} GB\n"
         disk_usage_info += f"    Used: {usage.used:.2f} GB\n"
         disk_usage_info += f"    Free: {usage.free:.2f} GB\n"
         disk_usage_info += f"    Percent Used: {usage.percent:.2f}%\n"
         disk_usage_info += f"    Percent Free: {100 - usage.percent:.2f}%\n\n"
+    file_contents += disk_usage_info
 
+    # Hostname
+    hostname = socket.gethostname()
+    # IP address
+    ip_address = socket.gethostbyname(hostname)
+    # Network interfaces
+    network_interfaces = psutil.net_if_addrs()
+
+    # Format hostname and IP address
+    host_info = "HOST INFORMATION\n"
+    host_info += f"    Hostname: {hostname}\n"
+    host_info += f"    IP Address: {ip_address}\n\n"
+    file_contents += host_info
+
+    # Format network interfaces
+    network_info = "NETWORK INTERFACES\n"
+    for interface, addresses in network_interfaces.items():
+        network_info += f"    Interface: {interface}\n"
+        for addr in addresses:
+            if addr.family == socket.AF_INET:
+                network_info += f"        IP Address: {addr.address}\n"
+                network_info += f"        Netmask: {addr.netmask}\n"
+                network_info += f"        Broadcast IP: {addr.broadcast}\n"
+            elif addr.family == socket.AF_INET6:
+                network_info += f"        IP Address (IPv6): {addr.address}\n"
+                network_info += f"        Netmask (IPv6): {addr.netmask}\n"
+            elif addr.family == psutil.AF_LINK:
+                network_info += f"        MAC Address: {addr.address}\n"
+        network_info += "\n"
+    file_contents += network_info
+
+    # GPU information
+    gpus = GPUtil.getGPUs()
+    gpu_info = "GPU INFORMATION\n"
+    for idx, gpu in enumerate(gpus):
+        gpu_info += f"    GPU {idx + 1}:\n"
+        gpu_info += f"        Name: {gpu.name}\n"
+        gpu_info += f"        UUID: {gpu.uuid}\n"
+        gpu_info += f"        Load: {gpu.load * 100:.2f}%\n"
+        gpu_info += f"        Memory Usage:\n"
+        gpu_info += f"            Total: {gpu.memoryTotal/1024:.2f} GB\n"
+        gpu_info += f"            Used: {gpu.memoryUsed/1024:.2f} GB\n"
+        gpu_info += f"            Free: {gpu.memoryFree/1024:.2f} GB\n"
+        gpu_info += f"        Temperature: {gpu.temperature:.2f} °C\n\n"  # GPU temperature if available
+    file_contents += gpu_info
+
+
+
+
+    print(file_contents)
     write_disk_usage_info(file_path, disk_usage_info)
     return file_path
 

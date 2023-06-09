@@ -82,13 +82,19 @@ def get_os_information():
     uptime = psutil.boot_time()
     uptime_dt = datetime.datetime.fromtimestamp(uptime)
     uptime_str = str(datetime.datetime.now() - uptime_dt)
+    # Hostname
+    hostname = socket.gethostname()
+    # IP address
+    ip_address = socket.gethostbyname(hostname)
     os_info = "OPERATING SYSTEM INFORMATION\n"
     os_info += f"    System: {platform.system()}\n"
     os_info += f"    Release: {platform.release()}\n"
     os_info += f"    Version: {platform.version()}\n"
     os_info += f"    Machine: {platform.machine()}\n"
     os_info += f"    Processor: {platform.processor()}\n"
-    os_info += f"    Uptime: {uptime_str}\n\n"
+    os_info += f"    Uptime: {uptime_str}\n"
+    os_info += f"    hostname: {hostname}\n"
+    os_info += f"    ip_address: {ip_address}\n\n"
     return os_info
 
 
@@ -190,17 +196,8 @@ def get_disk_statistics(device=None, mountpoint=None, include_all_partitions=Fal
 
 
 def get_network_statistics():
-    # Hostname
-    hostname = socket.gethostname()
-    # IP address
-    ip_address = socket.gethostbyname(hostname)
     # Network interfaces
     network_interfaces = psutil.net_if_addrs()
-
-    # Format hostname and IP address
-    host_info = "HOST INFORMATION\n"
-    host_info += f"    Hostname: {hostname}\n"
-    host_info += f"    IP Address: {ip_address}\n\n"
 
     # Format network interfaces
     network_info = "NETWORK INTERFACES\n"
@@ -218,7 +215,7 @@ def get_network_statistics():
                 network_info += f"        MAC Address: {addr.address}\n"
         network_info += "\n"
 
-    return host_info + network_info
+    return network_info
 
 
 def win_firewall(info):
@@ -238,33 +235,6 @@ def win_firewall(info):
         info += "        " + str(e) + "\n"
 
     return info
-
-def lin_firewall(info):
-    try:
-        # Check firewall status using firewall-cmd command
-        firewall_status = subprocess.check_output("firewall-cmd --state", shell=True, universal_newlines=True)
-        info += f"    Firewall Status:        {firewall_status.strip()}\n"
-
-        # Check firewall rules using firewall-cmd command
-        firewall_rules = subprocess.check_output("firewall-cmd --list-all", shell=True, universal_newlines=True)
-        info += f"\n    Firewall Rules:\n{firewall_rules}"
-
-    except subprocess.CalledProcessError as e:
-        info += "    Error retrieving firewall information:\n"
-        info += "        " + str(e) + "\n"
-
-    return info
-
-def get_firewall_information():
-    if platform.system() == "Linux":
-        pass
-        firewall_info = lin_firewall("LINUX FIREWALL INFORMATION\n")
-    elif platform.system() == "Windows":
-        firewall_info = win_firewall("WINDOWS FIREWALL INFORMATION\n")
-    else:
-        firewall_info = "FIREWALL INFORMATION\n    Firewall information not available on this platform.\n"
-
-    return firewall_info
 
 def indent_firewall_status_win(status):
     indented_status = ""
@@ -293,6 +263,21 @@ def indent_firewall_rules_win(rules):
         indented_rules += "\n"
     indented_rules += "\n"
     return indented_rules
+
+
+def lin_firewall(info):
+    info += f"    Firewall Status:\n        Linux Firewall information not available at this time.\n\n"
+    return info
+
+def get_firewall_information():
+    if platform.system() == "Linux":
+        firewall_info = lin_firewall("LINUX FIREWALL INFORMATION\n")
+    elif platform.system() == "Windows":
+        firewall_info = win_firewall("WINDOWS FIREWALL INFORMATION\n")
+    else:
+        firewall_info = "FIREWALL INFORMATION\n    Firewall information not available on this platform.\n"
+
+    return firewall_info
 
 
 def get_gpu_information():
@@ -331,18 +316,19 @@ def generate_usage_file(device=None, mountpoint=None, include_all_partitions=Fal
         file_contents += get_os_information()
     if 'cpu' in metrics:
         file_contents += get_cpu_statistics()
-    if 'sec' in metrics:
-        file_contents += get_system_security(metrics)
-    if 'fw' in metrics:
-        file_contents += get_firewall_information()
+    if 'gpu' in metrics:
+        file_contents += get_gpu_information()
     if 'mem' in metrics:
         file_contents += get_memory_statistics()
     if 'dsk' in metrics:
         file_contents += get_disk_statistics(device=device, mountpoint=mountpoint, include_all_partitions=include_all_partitions)
+    if 'sec' in metrics:
+        file_contents += get_system_security(metrics)
+    if 'fw' in metrics:
+        file_contents += get_firewall_information()
     if 'net' in metrics:
         file_contents += get_network_statistics()
-    if 'gpu' in metrics:
-        file_contents += get_gpu_information()
+
 
     write_disk_usage_info(file_path, file_contents)
     return file_path

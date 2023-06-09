@@ -378,9 +378,6 @@ def main():
                         default=None)  # New argument for specifying the output file
 
     args = parser.parse_args()
-    # Check Conflicting Arguments
-    if args.mount_point and args.include_all_partitions:
-        raise AssertionError("Conflicting parameters: --mount_point and --include_all_partitions cannot be used together.")
 
     mount_points = None
     if args.mount_point:

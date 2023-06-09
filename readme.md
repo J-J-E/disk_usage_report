@@ -10,6 +10,7 @@ python system_info.py [--send_email] [--mount_point MOUNT_POINTS] [--include_all
 - `--mount_point MOUNT_POINTS`: Filters disk usage by specified mount points. Multiple mount points can be provided, separated by commas.
 - `--include_all_partitions`: Includes all partitions, including network and virtual partitions, in the disk usage report.
 - `--metrics METRICS`: Specifies the sections to include in the report. Multiple sections can be provided, separated by commas. Available sections: `os`, `cpu`, `sec`, `mem`, `dsk`, `net`, `gpu`.
+- - `--output_file`: Specify output file including full path, name, and extension.
 
   - Sub metrics for the `sec` section:
     - `cua`: Include connected user accounts.

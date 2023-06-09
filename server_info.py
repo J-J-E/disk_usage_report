@@ -374,6 +374,8 @@ def main():
     parser.add_argument("--mount_point", help='Filter disk usage by mount points (comma-separated, enclosed in quotes)', default=None)
     parser.add_argument("--include_all_partitions", help="Physical partitions only by default. For network/virtual partitions, enable this flag", action="store_true")
     parser.add_argument("--metrics", help="Sections to include in the report (comma-separated)", default=None)
+    parser.add_argument("--output_file", help="Path to the output file",
+                        default=None)  # New argument for specifying the output file
 
     args = parser.parse_args()
     # Check Conflicting Arguments
@@ -386,7 +388,7 @@ def main():
         # Strip whitespace and remove the enclosing quotes
         mount_points = [mp.strip().strip("'").strip('"') for mp in mount_points]
 
-    file_path = generate_usage_file(mountpoint=mount_points, include_all_partitions=args.include_all_partitions, metrics=args.metrics)
+    file_path = generate_usage_file(mountpoint=mount_points, include_all_partitions=args.include_all_partitions, metrics=args.metrics, file_path=args.output_file)
 
     if args.send_email:
         import_config_values()
